@@ -7,7 +7,9 @@ import { v4 as uuidv4 } from "uuid";
 function App() {
   const [todo, setTodo] = useState("");
   const [todos, setTodos] = useState([]);
-  const [showFinished, setshowFinished] = useState(true);
+  const [showFinished, setShowFinished] = useState(true);
+  const [editingTodoId, setEditingTodoId] = useState(null);
+  const [editedTodo, setEditedTodo] = useState(null);
 
   useEffect(() => {
     let todoString = localStorage.getItem("todos");
@@ -17,36 +19,39 @@ function App() {
     }
   }, []);
 
-  const saveToLS = (params) => {
+  const saveToLS = () => {
     localStorage.setItem("todos", JSON.stringify(todos));
   };
 
-  const toggleFinished = (e) => {
-    setshowFinished(!showFinished);
+  const toggleFinished = () => {
+    setShowFinished(!showFinished);
   };
 
-  const handleEdit = (e, id) => {
-    let t = todos.filter((i) => i.id === id);
-    setTodo(t[0].todo);
-    let newTodos = todos.filter((item) => {
-      return item.id !== id;
-    });
-    setTodos(newTodos);
-    saveToLS();
+  const handleEdit = (id) => {
+    setEditingTodoId(id);
+    let t = todos.find((i) => i.id === id);
+    setEditedTodo(t.todo);
   };
 
-  const handleDelete = (e, id) => {
-    let newTodos = todos.filter((item) => {
-      return item.id !== id;
-    });
+  const handleSaveEdit = () => {
+    if (!editedTodo.trim()) return;
+    const newTodos = todos.map((item) =>
+      item.id === editingTodoId ? { ...item, todo: editedTodo } : item
+    );
     setTodos(newTodos);
-    saveToLS();
+    setEditingTodoId(null);
+    setEditedTodo(null);
+  };
+
+  const handleDelete = (id) => {
+    let newTodos = todos.filter((item) => item.id !== id);
+    setTodos(newTodos);
   };
 
   const handleAdd = () => {
+    if (!todo.trim()) return;
     setTodos([...todos, { id: uuidv4(), todo, isCompleted: false }]);
     setTodo("");
-    saveToLS();
   };
 
   const handleChange = (e) => {
@@ -55,14 +60,15 @@ function App() {
 
   const handleCheckbox = (e) => {
     let id = e.target.name;
-    let index = todos.findIndex((item) => {
-      return item.id === id;
-    });
+    let index = todos.findIndex((item) => item.id === id);
     let newTodos = [...todos];
     newTodos[index].isCompleted = !newTodos[index].isCompleted;
     setTodos(newTodos);
-    saveToLS();
   };
+
+  useEffect(() => {
+    saveToLS();
+  }, [todos]);
 
   return (
     <>
@@ -102,7 +108,9 @@ function App() {
         <div className="h-[1px] bg-black opacity-15 w-[90%] mx-auto my-2"></div>
         <h2 className="text-2xl font-bold">Your Todos</h2>
         <div className="todos">
-          {todos.length === 0 && <div className="m-5">No Todos to display</div>}
+          {todos.length === 0 && (
+            <div className="m-5">No Todos to display</div>
+          )}
           {todos.map((item) => {
             return (
               (showFinished || !item.isCompleted) && (
@@ -115,20 +123,33 @@ function App() {
                       checked={item.isCompleted}
                       id=""
                     />
-                    <div className={item.isCompleted ? "line-through" : ""}>
-                      {item.todo}
-                    </div>
+                    {editingTodoId === item.id ? (
+                      <input
+                        type="text"
+                        value={editedTodo}
+                        onChange={(e) => setEditedTodo(e.target.value)}
+                        onBlur={handleSaveEdit}
+                        autoFocus
+                      />
+                    ) : (
+                      <div
+                        className={item.isCompleted ? "line-through" : ""}
+                        onDoubleClick={() => handleEdit(item.id)}
+                      >
+                        {item.todo}
+                      </div>
+                    )}
                   </div>
                   <div className="buttons flex h-full">
                     <button
-                      onClick={(e) => handleEdit(e, item.id)}
+                      onClick={() => handleEdit(item.id)}
                       className="bg-violet-800 hover:bg-violet-950 p-2 py-1 text-sm font-bold text-white rounded-md mx-1"
                     >
                       <FaEdit />
                     </button>
                     <button
-                      onClick={(e) => {
-                        handleDelete(e, item.id);
+                      onClick={() => {
+                        handleDelete(item.id);
                       }}
                       className="bg-violet-800 hover:bg-violet-950 p-2 py-1 text-sm font-bold text-white rounded-md mx-1"
                     >
